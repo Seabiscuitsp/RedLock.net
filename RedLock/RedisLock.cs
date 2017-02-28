@@ -23,8 +23,9 @@ namespace RedLock
 		private readonly int quorumRetryDelayMs;
 		private readonly double clockDriftFactor;
 		private bool isDisposed;
+        private bool isAcquired;
 
-		private Timer lockKeepaliveTimer;
+        private Timer lockKeepaliveTimer;
 
 		private const string UnlockScript =
 			@"if redis.call('get', KEYS[1]) == ARGV[1] then
@@ -45,9 +46,21 @@ namespace RedLock
 				return -1
 			end";
 
+        public delegate void IsAcquiredChangedEvent(RedisLock redisLock);
+        public event IsAcquiredChangedEvent IsAcquiredChanged;
 		public readonly string Resource;
 		public string LockId { get; }
-		public bool IsAcquired { get; private set; }
+		public bool IsAcquired {
+            get
+            {
+                return isAcquired;
+            }
+            private set
+            {
+                isAcquired = value;
+                IsAcquiredChanged?.Invoke(this);
+            }
+        }
 		public int ExtendCount { get; private set; }
 		private readonly TimeSpan expiryTime;
 		private readonly TimeSpan? waitTime;
